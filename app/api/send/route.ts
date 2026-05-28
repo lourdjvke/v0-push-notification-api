@@ -84,7 +84,14 @@ export async function POST(request: NextRequest) {
       body: notification.body,
       icon: notification.icon,
       badge: notification.badge,
+      image: notification.image,
+      tag: notification.tag,
       data: notification.data,
+      actions: notification.actions,
+      vibrate: notification.vibrate,
+      silent: notification.silent,
+      requireInteraction: notification.requireInteraction,
+      timestamp: notification.timestamp,
     };
 
     let result;

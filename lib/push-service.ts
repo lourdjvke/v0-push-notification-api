@@ -11,13 +11,25 @@ webpush.setVapidDetails(
   vapidPrivateKey
 );
 
+export interface NotificationAction {
+  id: string;
+  title: string;
+  icon?: string;
+}
+
 export interface PushNotification {
   title: string;
   body: string;
   icon?: string;
   badge?: string;
+  image?: string;
   tag?: string;
   data?: Record<string, any>;
+  actions?: NotificationAction[];
+  vibrate?: number[];
+  silent?: boolean;
+  requireInteraction?: boolean;
+  timestamp?: number;
 }
 
 export interface PushPayload {
@@ -35,14 +47,18 @@ export async function sendPushNotification(
 ): Promise<void> {
   try {
     const payload = JSON.stringify({
-      notification: {
-        title: notification.title,
-        body: notification.body,
-        icon: notification.icon,
-        badge: notification.badge,
-        tag: notification.tag,
-      },
+      title: notification.title,
+      body: notification.body,
+      icon: notification.icon,
+      badge: notification.badge,
+      image: notification.image,
+      tag: notification.tag,
       data: notification.data || {},
+      actions: notification.actions || [],
+      vibrate: notification.vibrate,
+      silent: notification.silent || false,
+      requireInteraction: notification.requireInteraction || false,
+      timestamp: notification.timestamp || Date.now(),
     });
 
     await webpush.sendNotification(subscription as any, payload);
