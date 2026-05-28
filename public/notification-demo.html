@@ -1,0 +1,756 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Push Notification Demo</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 40px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            font-size: 32px;
+            margin-bottom: 10px;
+        }
+        
+        .header p {
+            font-size: 16px;
+            opacity: 0.9;
+        }
+        
+        .content {
+            padding: 40px;
+        }
+        
+        .section {
+            margin-bottom: 40px;
+        }
+        
+        .section h2 {
+            color: #333;
+            margin-bottom: 15px;
+            font-size: 20px;
+            border-bottom: 2px solid #667eea;
+            padding-bottom: 10px;
+        }
+        
+        .config-box {
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .config-item {
+            margin-bottom: 15px;
+            display: flex;
+            gap: 15px;
+            align-items: center;
+        }
+        
+        .config-item label {
+            font-weight: 600;
+            min-width: 150px;
+            color: #333;
+        }
+        
+        .config-item input,
+        .config-item select {
+            flex: 1;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 14px;
+            font-family: 'Courier New', monospace;
+        }
+        
+        .status-box {
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .status-box.success {
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+        
+        .status-box.error {
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+        
+        .status-box.info {
+            background: #d1ecf1;
+            border: 1px solid #bee5eb;
+            color: #0c5460;
+        }
+        
+        .status-icon {
+            font-size: 20px;
+            font-weight: bold;
+        }
+        
+        .button-group {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-bottom: 20px;
+        }
+        
+        button {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        button.primary {
+            background: #667eea;
+            color: white;
+        }
+        
+        button.primary:hover:not(:disabled) {
+            background: #5568d3;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+        
+        button.secondary {
+            background: #e9ecef;
+            color: #333;
+        }
+        
+        button.secondary:hover:not(:disabled) {
+            background: #dee2e6;
+        }
+        
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        .form-group label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #333;
+        }
+        
+        .form-group input,
+        .form-group textarea {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 14px;
+            font-family: 'Courier New', monospace;
+        }
+        
+        .form-group textarea {
+            resize: vertical;
+            min-height: 80px;
+        }
+        
+        .code-block {
+            background: #2d2d2d;
+            color: #f8f8f2;
+            padding: 20px;
+            border-radius: 8px;
+            overflow-x: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            margin-bottom: 15px;
+            line-height: 1.5;
+        }
+        
+        .tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #e9ecef;
+        }
+        
+        .tab-btn {
+            padding: 10px 20px;
+            background: none;
+            border: none;
+            border-bottom: 3px solid transparent;
+            cursor: pointer;
+            font-weight: 600;
+            color: #666;
+            transition: all 0.3s ease;
+        }
+        
+        .tab-btn.active {
+            color: #667eea;
+            border-bottom-color: #667eea;
+        }
+        
+        .tab-content {
+            display: none;
+        }
+        
+        .tab-content.active {
+            display: block;
+        }
+        
+        .subscription-id {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 6px;
+            font-family: 'Courier New', monospace;
+            border: 1px solid #ddd;
+            word-break: break-all;
+            margin: 10px 0;
+        }
+        
+        .copy-btn {
+            padding: 6px 12px;
+            font-size: 12px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        
+        .copy-btn:hover {
+            background: #5568d3;
+        }
+        
+        .note {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            color: #856404;
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 15px;
+        }
+        
+        .notification-preview {
+            background: #f8f9fa;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 20px;
+            margin-top: 15px;
+        }
+        
+        .notification-preview h3 {
+            margin: 0 0 5px 0;
+            color: #333;
+        }
+        
+        .notification-preview p {
+            margin: 0 0 10px 0;
+            color: #666;
+        }
+        
+        .action-buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
+        
+        .action-buttons button {
+            padding: 8px 16px;
+            font-size: 12px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 4px;
+        }
+        
+        .response-box {
+            background: #2d2d2d;
+            color: #f8f8f2;
+            padding: 20px;
+            border-radius: 8px;
+            margin-top: 15px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        
+        .loading {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 3px solid rgba(0,0,0,0.1);
+            border-radius: 50%;
+            border-top-color: #667eea;
+            animation: spin 0.8s linear infinite;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔔 Push Notification Demo</h1>
+            <p>Complete standalone HTML+JS implementation</p>
+        </div>
+        
+        <div class="content">
+            <!-- Configuration Section -->
+            <div class="section">
+                <h2>1. Configuration</h2>
+                <div class="config-box">
+                    <div class="config-item">
+                        <label>Base URL:</label>
+                        <input type="text" id="baseUrl" value="https://v0-push-notification-api.vercel.app" readonly>
+                    </div>
+                    <div class="config-item">
+                        <label>API Key:</label>
+                        <input type="text" id="apiKey" value="test-api-key-12345" readonly>
+                    </div>
+                    <div class="config-item">
+                        <label>VAPID Public Key:</label>
+                        <input type="text" id="vapidKey" value="BGLbLfrYWC5npSRnE1QrNXZQrvnlkLommK6OvZUeUNrNKpFbKTFQkLvT0_19CiYeXsHGMs7DdAGPErC25BLTaPA" readonly style="font-size: 12px;">
+                    </div>
+                    <div class="config-item">
+                        <label>Device Name:</label>
+                        <input type="text" id="deviceName" value="My Web Browser">
+                    </div>
+                </div>
+                <div id="statusSubscription"></div>
+            </div>
+            
+            <!-- Subscription Section -->
+            <div class="section">
+                <h2>2. Subscribe Device</h2>
+                <div class="note">
+                    <strong>ℹ️ Note:</strong> When you click Subscribe, your browser will ask permission to show notifications. Click "Allow".
+                </div>
+                <div class="button-group">
+                    <button class="primary" onclick="subscribeUser()">Subscribe Device</button>
+                    <button class="secondary" onclick="unsubscribeUser()">Unsubscribe</button>
+                </div>
+                <div id="subscriptionStatus"></div>
+                <div id="subscriptionIdDisplay"></div>
+            </div>
+            
+            <!-- Send Notification Section -->
+            <div class="section">
+                <h2>3. Send Notification</h2>
+                
+                <div class="tabs">
+                    <button class="tab-btn active" onclick="switchTab('simple')">Simple</button>
+                    <button class="tab-btn" onclick="switchTab('buttons')">With Buttons</button>
+                    <button class="tab-btn" onclick="switchTab('rich')">With Image & Buttons</button>
+                </div>
+                
+                <!-- Simple Notification Tab -->
+                <div class="tab-content active" id="simple">
+                    <div class="form-group">
+                        <label>Title:</label>
+                        <input type="text" id="simpleTitle" value="Hello World" placeholder="Notification title">
+                    </div>
+                    <div class="form-group">
+                        <label>Body:</label>
+                        <input type="text" id="simpleBody" value="This is your first notification!" placeholder="Notification message">
+                    </div>
+                    <button class="primary" onclick="sendSimpleNotification()">Send Simple Notification</button>
+                    <div id="simpleResponse"></div>
+                </div>
+                
+                <!-- Buttons Notification Tab -->
+                <div class="tab-content" id="buttons">
+                    <div class="form-group">
+                        <label>Title:</label>
+                        <input type="text" id="buttonsTitle" value="Order Shipped" placeholder="Notification title">
+                    </div>
+                    <div class="form-group">
+                        <label>Body:</label>
+                        <input type="text" id="buttonsBody" value="Your order #12345 is on the way" placeholder="Notification message">
+                    </div>
+                    <div class="notification-preview">
+                        <h3>Preview:</h3>
+                        <p id="buttonsPreviewTitle">Order Shipped</p>
+                        <p id="buttonsPreviewBody">Your order #12345 is on the way</p>
+                        <div class="action-buttons">
+                            <button>View Order</button>
+                            <button>Track Package</button>
+                        </div>
+                    </div>
+                    <button class="primary" onclick="sendButtonNotification()">Send Notification with Buttons</button>
+                    <div id="buttonsResponse"></div>
+                </div>
+                
+                <!-- Rich Notification Tab -->
+                <div class="tab-content" id="rich">
+                    <div class="form-group">
+                        <label>Title:</label>
+                        <input type="text" id="richTitle" value="Payment Confirmed" placeholder="Notification title">
+                    </div>
+                    <div class="form-group">
+                        <label>Body:</label>
+                        <input type="text" id="richBody" value="Your payment of $99.99 has been processed" placeholder="Notification message">
+                    </div>
+                    <div class="form-group">
+                        <label>Image URL:</label>
+                        <input type="text" id="imageUrl" value="https://via.placeholder.com/300x200?text=Payment+Receipt" placeholder="Image URL">
+                    </div>
+                    <div class="form-group">
+                        <label>Icon URL:</label>
+                        <input type="text" id="iconUrl" value="" placeholder="Icon URL (optional)">
+                    </div>
+                    <div class="notification-preview">
+                        <h3>Preview:</h3>
+                        <img id="imagePreview" src="https://via.placeholder.com/300x200?text=Payment+Receipt" style="width: 100%; border-radius: 6px; margin-bottom: 10px;">
+                        <p id="richPreviewTitle">Payment Confirmed</p>
+                        <p id="richPreviewBody">Your payment of $99.99 has been processed</p>
+                        <div class="action-buttons">
+                            <button>View Receipt</button>
+                            <button>Get Help</button>
+                        </div>
+                    </div>
+                    <button class="primary" onclick="sendRichNotification()">Send Rich Notification</button>
+                    <div id="richResponse"></div>
+                </div>
+            </div>
+            
+            <!-- API Reference Section -->
+            <div class="section">
+                <h2>4. API Reference</h2>
+                <p style="color: #666; margin-bottom: 15px;">Key endpoints and examples:</p>
+                
+                <h3 style="color: #333; margin-top: 15px; margin-bottom: 10px;">Subscribe Device (No API Key):</h3>
+                <div class="code-block">POST /api/subscribe
+Headers: Content-Type: application/json
+Body: { subscription: {...}, deviceName: "..." }
+Response: { subscriptionId: "sub_..." }</div>
+                
+                <h3 style="color: #333; margin-top: 15px; margin-bottom: 10px;">Send Notification (Requires API Key):</h3>
+                <div class="code-block">POST /api/send
+Headers: 
+  - Content-Type: application/json
+  - Authorization: Bearer <API_KEY>
+Body: { 
+  subscriptionId: "sub_...",
+  notification: { title, body, image, actions, ... }
+}
+Response: { success: true, result: { successful, failed } }</div>
+                
+                <h3 style="color: #333; margin-top: 15px; margin-bottom: 10px;">Unsubscribe (No API Key):</h3>
+                <div class="code-block">DELETE /api/unsubscribe?id=<subscription_id>
+Response: { success: true }</div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        const BASE_URL = 'https://v0-push-notification-api.vercel.app';
+        const API_KEY = 'test-api-key-12345';
+        const VAPID_KEY = 'BGLbLfrYWC5npSRnE1QrNXZQrvnlkLommK6OvZUeUNrNKpFbKTFQkLvT0_19CiYeXsHGMs7DdAGPErC25BLTaPA';
+        
+        let currentSubscriptionId = localStorage.getItem('subscriptionId') || null;
+        
+        // Update preview when user types
+        document.addEventListener('DOMContentLoaded', () => {
+            document.getElementById('buttonsTitle').addEventListener('input', (e) => {
+                document.getElementById('buttonsPreviewTitle').textContent = e.target.value;
+            });
+            document.getElementById('buttonsBody').addEventListener('input', (e) => {
+                document.getElementById('buttonsPreviewBody').textContent = e.target.value;
+            });
+            document.getElementById('richTitle').addEventListener('input', (e) => {
+                document.getElementById('richPreviewTitle').textContent = e.target.value;
+            });
+            document.getElementById('richBody').addEventListener('input', (e) => {
+                document.getElementById('richPreviewBody').textContent = e.target.value;
+            });
+            document.getElementById('imageUrl').addEventListener('input', (e) => {
+                document.getElementById('imagePreview').src = e.target.value;
+            });
+            
+            updateSubscriptionStatus();
+        });
+        
+        function switchTab(tabName) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+            
+            document.getElementById(tabName).classList.add('active');
+            event.target.classList.add('active');
+        }
+        
+        function updateSubscriptionStatus() {
+            const statusEl = document.getElementById('subscriptionStatus');
+            const idEl = document.getElementById('subscriptionIdDisplay');
+            
+            if (currentSubscriptionId) {
+                statusEl.innerHTML = '<div class="status-box success"><span class="status-icon">✓</span> Device subscribed successfully</div>';
+                idEl.innerHTML = `
+                    <div style="margin-top: 15px;">
+                        <p style="color: #666; margin-bottom: 8px;"><strong>Your Subscription ID:</strong></p>
+                        <div style="display: flex; gap: 10px;">
+                            <div class="subscription-id">${currentSubscriptionId}</div>
+                            <button class="copy-btn" onclick="copyToClipboard('${currentSubscriptionId}')">Copy</button>
+                        </div>
+                        <p style="color: #666; font-size: 12px; margin-top: 8px;">Use this ID to send notifications from your backend</p>
+                    </div>
+                `;
+            } else {
+                statusEl.innerHTML = '<div class="status-box info"><span class="status-icon">ℹ</span> Subscribe your device to receive notifications</div>';
+                idEl.innerHTML = '';
+            }
+        }
+        
+        async function subscribeUser() {
+            const statusEl = document.getElementById('subscriptionStatus');
+            statusEl.innerHTML = '<div class="status-box info"><span class="loading"></span> Requesting permission...</div>';
+            
+            try {
+                // Request permission
+                const permission = await Notification.requestPermission();
+                if (permission !== 'granted') {
+                    statusEl.innerHTML = '<div class="status-box error"><span class="status-icon">✗</span> Notification permission denied</div>';
+                    return;
+                }
+                
+                // Register service worker
+                const registration = await navigator.serviceWorker.register('/sw.js');
+                
+                // Get subscription
+                const subscription = await registration.pushManager.subscribe({
+                    userVisibleOnly: true,
+                    applicationServerKey: VAPID_KEY
+                });
+                
+                // Send to backend
+                const response = await fetch(BASE_URL + '/api/subscribe', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        subscription: subscription.toJSON(),
+                        deviceName: document.getElementById('deviceName').value
+                    })
+                });
+                
+                const data = await response.json();
+                currentSubscriptionId = data.subscriptionId;
+                localStorage.setItem('subscriptionId', currentSubscriptionId);
+                
+                updateSubscriptionStatus();
+            } catch (error) {
+                statusEl.innerHTML = `<div class="status-box error"><span class="status-icon">✗</span> ${error.message}</div>`;
+                console.error('Error:', error);
+            }
+        }
+        
+        async function unsubscribeUser() {
+            if (!currentSubscriptionId) {
+                alert('No subscription found');
+                return;
+            }
+            
+            try {
+                // Unsubscribe from browser
+                const registration = await navigator.serviceWorker.ready;
+                const subscription = await registration.pushManager.getSubscription();
+                if (subscription) {
+                    await subscription.unsubscribe();
+                }
+                
+                // Delete from backend
+                await fetch(BASE_URL + '/api/unsubscribe?id=' + currentSubscriptionId, {
+                    method: 'DELETE'
+                });
+                
+                currentSubscriptionId = null;
+                localStorage.removeItem('subscriptionId');
+                updateSubscriptionStatus();
+                
+                document.getElementById('subscriptionStatus').innerHTML = '<div class="status-box success"><span class="status-icon">✓</span> Unsubscribed successfully</div>';
+            } catch (error) {
+                console.error('Error:', error);
+            }
+        }
+        
+        async function sendSimpleNotification() {
+            if (!currentSubscriptionId) {
+                alert('Please subscribe first');
+                return;
+            }
+            
+            const responseEl = document.getElementById('simpleResponse');
+            responseEl.innerHTML = '<div class="status-box info"><span class="loading"></span> Sending...</div>';
+            
+            try {
+                const response = await fetch(BASE_URL + '/api/send', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer ' + API_KEY
+                    },
+                    body: JSON.stringify({
+                        subscriptionId: currentSubscriptionId,
+                        notification: {
+                            title: document.getElementById('simpleTitle').value,
+                            body: document.getElementById('simpleBody').value
+                        }
+                    })
+                });
+                
+                const data = await response.json();
+                if (data.success) {
+                    responseEl.innerHTML = '<div class="status-box success"><span class="status-icon">✓</span> Notification sent!</div>';
+                } else {
+                    responseEl.innerHTML = `<div class="status-box error"><span class="status-icon">✗</span> ${data.error}</div>`;
+                }
+                responseEl.innerHTML += '<div class="response-box">' + JSON.stringify(data, null, 2) + '</div>';
+            } catch (error) {
+                responseEl.innerHTML = `<div class="status-box error"><span class="status-icon">✗</span> ${error.message}</div>`;
+            }
+        }
+        
+        async function sendButtonNotification() {
+            if (!currentSubscriptionId) {
+                alert('Please subscribe first');
+                return;
+            }
+            
+            const responseEl = document.getElementById('buttonsResponse');
+            responseEl.innerHTML = '<div class="status-box info"><span class="loading"></span> Sending...</div>';
+            
+            try {
+                const response = await fetch(BASE_URL + '/api/send', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer ' + API_KEY
+                    },
+                    body: JSON.stringify({
+                        subscriptionId: currentSubscriptionId,
+                        notification: {
+                            title: document.getElementById('buttonsTitle').value,
+                            body: document.getElementById('buttonsBody').value,
+                            actions: [
+                                { id: 'view-order', title: 'View Order' },
+                                { id: 'track-package', title: 'Track Package' }
+                            ],
+                            data: {
+                                orderId: '12345',
+                                actionUrls: {
+                                    'view-order': 'https://example.com/orders/12345',
+                                    'track-package': 'https://tracker.example.com'
+                                }
+                            }
+                        }
+                    })
+                });
+                
+                const data = await response.json();
+                if (data.success) {
+                    responseEl.innerHTML = '<div class="status-box success"><span class="status-icon">✓</span> Notification with buttons sent!</div>';
+                } else {
+                    responseEl.innerHTML = `<div class="status-box error"><span class="status-icon">✗</span> ${data.error}</div>`;
+                }
+                responseEl.innerHTML += '<div class="response-box">' + JSON.stringify(data, null, 2) + '</div>';
+            } catch (error) {
+                responseEl.innerHTML = `<div class="status-box error"><span class="status-icon">✗</span> ${error.message}</div>`;
+            }
+        }
+        
+        async function sendRichNotification() {
+            if (!currentSubscriptionId) {
+                alert('Please subscribe first');
+                return;
+            }
+            
+            const responseEl = document.getElementById('richResponse');
+            responseEl.innerHTML = '<div class="status-box info"><span class="loading"></span> Sending...</div>';
+            
+            try {
+                const response = await fetch(BASE_URL + '/api/send', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer ' + API_KEY
+                    },
+                    body: JSON.stringify({
+                        subscriptionId: currentSubscriptionId,
+                        notification: {
+                            title: document.getElementById('richTitle').value,
+                            body: document.getElementById('richBody').value,
+                            image: document.getElementById('imageUrl').value,
+                            icon: document.getElementById('iconUrl').value || undefined,
+                            actions: [
+                                { id: 'view-receipt', title: 'View Receipt' },
+                                { id: 'support', title: 'Get Help' }
+                            ],
+                            data: {
+                                transactionId: 'TXN_12345',
+                                actionUrls: {
+                                    'view-receipt': 'https://example.com/receipt/TXN_12345',
+                                    'support': 'https://example.com/support'
+                                }
+                            }
+                        }
+                    })
+                });
+                
+                const data = await response.json();
+                if (data.success) {
+                    responseEl.innerHTML = '<div class="status-box success"><span class="status-icon">✓</span> Rich notification sent!</div>';
+                } else {
+                    responseEl.innerHTML = `<div class="status-box error"><span class="status-icon">✗</span> ${data.error}</div>`;
+                }
+                responseEl.innerHTML += '<div class="response-box">' + JSON.stringify(data, null, 2) + '</div>';
+            } catch (error) {
+                responseEl.innerHTML = `<div class="status-box error"><span class="status-icon">✗</span> ${error.message}</div>`;
+            }
+        }
+        
+        function copyToClipboard(text) {
+            navigator.clipboard.writeText(text).then(() => {
+                alert('Subscription ID copied to clipboard!');
+            });
+        }
+    </script>
+</body>
+</html>

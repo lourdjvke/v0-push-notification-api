@@ -10,6 +10,16 @@ function generateKeyId(): string {
   return crypto.randomBytes(8).toString('hex');
 }
 
+// Encode email to be Firebase-safe (replace dots with underscores)
+function encodeEmail(email: string): string {
+  return email.replace(/\./g, '_');
+}
+
+// Decode email back from Firebase-safe format
+function decodeEmail(encoded: string): string {
+  return encoded.replace(/_/g, '.');
+}
+
 /**
  * GET /api/keys
  * List all API keys for an email
@@ -25,7 +35,8 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const keysRef = ref(database, `api_keys/${email}`);
+    const encodedEmail = encodeEmail(email);
+    const keysRef = ref(database, `api_keys/${encodedEmail}`);
     const snapshot = await get(keysRef);
 
     let keys: any[] = [];
@@ -76,6 +87,7 @@ export async function POST(request: NextRequest) {
     const keyId = generateKeyId();
     const apiKey = generateApiKey();
     const now = new Date().toISOString();
+    const encodedEmail = encodeEmail(email);
 
     const keyData = {
       key: apiKey,
@@ -84,7 +96,7 @@ export async function POST(request: NextRequest) {
       lastUsed: null,
     };
 
-    const keysRef = ref(database, `api_keys/${email}/${keyId}`);
+    const keysRef = ref(database, `api_keys/${encodedEmail}/${keyId}`);
     await set(keysRef, keyData);
 
     return NextResponse.json(
@@ -129,7 +141,8 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    const keyRef = ref(database, `api_keys/${email}/${keyId}`);
+    const encodedEmail = encodeEmail(email);
+    const keyRef = ref(database, `api_keys/${encodedEmail}/${keyId}`);
     await remove(keyRef);
 
     return NextResponse.json(

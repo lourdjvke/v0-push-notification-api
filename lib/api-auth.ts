@@ -58,9 +58,11 @@ export async function validateApiKeyAsync(request: NextRequest): Promise<{ valid
 
     if (snapshot.exists()) {
       const allKeys = snapshot.val();
-      for (const email in allKeys) {
-        for (const keyId in allKeys[email]) {
-          if (allKeys[email][keyId].key === token) {
+      for (const encodedEmail in allKeys) {
+        for (const keyId in allKeys[encodedEmail]) {
+          if (allKeys[encodedEmail][keyId].key === token) {
+            // Decode email back from Firebase-safe format
+            const email = encodedEmail.replace(/_/g, '.');
             return { valid: true, email };
           }
         }
