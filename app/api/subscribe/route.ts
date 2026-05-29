@@ -23,11 +23,22 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const { subscription, deviceName, apikey } = body;
+    let { subscription, deviceName, apikey } = body;
 
     if (!subscription || !subscription.endpoint) {
       return createCorsErrorResponse('Invalid subscription data', 400);
     }
+
+    // Also check for API key in query params or headers
+    if (!apikey) {
+      apikey = request.nextUrl.searchParams.get('apikey');
+    }
+    if (!apikey && request.headers.get('Authorization')) {
+      const authHeader = request.headers.get('Authorization') || '';
+      apikey = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : authHeader;
+    }
+
+    console.log('[v0] Subscribe request - API Key present:', !!apikey);
 
     // Generate a unique subscription ID
     const subscriptionId = `sub_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
@@ -47,18 +58,19 @@ export async function POST(request: NextRequest) {
       subscriptionData.expirationTime = subscription.expirationTime;
     }
 
-    // If API key is provided, link subscription to user
+    // If API key is provided, save it directly
     if (apikey) {
+      subscriptionData.apiKey = apikey;
+      console.log('[v0] Subscription linked to API key:', apikey.substring(0, 10) + '...');
+      
+      // Also try to get email for backwards compatibility
       try {
-        // Validate the API key
-        const validation = await validateApiKeyAsync(request, apikey);
-
+        const validation = await validateApiKeyAsync(request);
         if (validation.valid && validation.email) {
           subscriptionData.email = validation.email;
-          subscriptionData.apiKey = apikey;
         }
       } catch (error: any) {
-        console.log('[v0] Could not validate API key during subscription:', error.message);
+        console.log('[v0] Could not validate API key for email:', error.message);
         // Continue anyway - subscription is still valid
       }
     }
@@ -68,15 +80,14 @@ export async function POST(request: NextRequest) {
     
     await set(subscriptionRef, subscriptionData);
 
-    // If user email exists, also store under user's subscriptions for analytics
-    if (subscriptionData.email) {
-      const encodedEmail = subscriptionData.email.replace(/\./g, '_');
-      const userSubRef = ref(database, `users/${encodedEmail}/subscriptions/${subscriptionId}`);
-      await set(userSubRef, {
+    console.log('[v0] Subscription saved with ID:', subscriptionId);
+
+    // If API key exists, also store under api-key index for faster lookups
+    if (apikey) {
+      const keyIndexRef = ref(database, `subscriptions_by_key/${apikey}/${subscriptionId}`);
+      await set(keyIndexRef, {
         subscriptionId,
         subscribedAt: subscriptionData.subscribedAt,
-        deviceName: subscriptionData.deviceName,
-        userAgent: subscriptionData.userAgent,
       });
     }
 

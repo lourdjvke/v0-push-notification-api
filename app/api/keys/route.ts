@@ -47,7 +47,7 @@ export async function GET(request: NextRequest) {
         name: data.name,
         createdAt: data.createdAt,
         lastUsed: data.lastUsed,
-        key: data.key.substring(0, 20) + '...' + data.key.substring(data.key.length - 4), // Masked
+        key: data.key, // Return full key, not masked
       }));
     }
 
