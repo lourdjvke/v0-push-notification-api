@@ -3,15 +3,17 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Key, BarChart3, Send, Settings } from 'lucide-react';
+import { Key, BarChart3, Send, Settings, Zap, ArrowRight } from 'lucide-react';
 
 export function DashboardNav() {
   const pathname = usePathname();
 
   const navItems = [
     { href: '/dashboard', label: 'API Keys', icon: Key },
+    { href: '/one-done', label: 'Setup Guide', icon: Zap },
+    { href: '/send-one-done', label: 'Send Guide', icon: ArrowRight },
     { href: '/dashboard/analytics', label: 'Analytics', icon: BarChart3 },
-    { href: '/dashboard/send', label: 'Send Notifications', icon: Send },
+    { href: '/dashboard/send', label: 'Send', icon: Send },
     { href: '/dashboard/settings', label: 'Settings', icon: Settings },
   ];
 
