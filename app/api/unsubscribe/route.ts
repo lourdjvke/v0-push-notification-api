@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { database, ref, remove } from '@/lib/firebase';
-import { validateApiKey, createErrorResponse, createSuccessResponse, createUnauthorizedResponse } from '@/lib/api-auth';
+import { validateApiKeyAsync, createErrorResponse, createSuccessResponse } from '@/lib/api-auth';
+import { handleCorsPreFlight, createCorsErrorResponse, createCorsSuccessResponse } from '@/lib/cors';
 
 /**
  * DELETE /api/unsubscribe?id=subscriptionId
@@ -8,24 +9,30 @@ import { validateApiKey, createErrorResponse, createSuccessResponse, createUnaut
  * Can be called with or without API key (for user deletion)
  */
 export async function DELETE(request: NextRequest) {
+  // Handle CORS preflight
+  const preflightResponse = handleCorsPreFlight(request);
+  if (preflightResponse) {
+    return preflightResponse;
+  }
+
   try {
     const subscriptionId = request.nextUrl.searchParams.get('id');
 
     if (!subscriptionId) {
-      return createErrorResponse('Missing subscription ID', 400);
+      return createCorsErrorResponse('Missing subscription ID', 400);
     }
 
     // Delete from Firebase
     const subscriptionRef = ref(database, `subscriptions/${subscriptionId}`);
     await remove(subscriptionRef);
 
-    return createSuccessResponse({
+    return createCorsSuccessResponse({
       message: 'Successfully unsubscribed',
       subscriptionId,
     });
   } catch (error: any) {
     console.error('[v0] Unsubscribe error:', error);
-    return createErrorResponse(
+    return createCorsErrorResponse(
       `Failed to unsubscribe: ${error.message}`,
       500
     );
@@ -38,10 +45,16 @@ export async function DELETE(request: NextRequest) {
  * Requires API key
  */
 export async function POST(request: NextRequest) {
+  // Handle CORS preflight
+  const preflightResponse = handleCorsPreFlight(request);
+  if (preflightResponse) {
+    return preflightResponse;
+  }
+
   // Validate API key
-  const auth = validateApiKey(request);
+  const auth = await validateApiKeyAsync(request);
   if (!auth.valid) {
-    return createUnauthorizedResponse();
+    return createCorsErrorResponse('Unauthorized: Invalid or missing API key', 401);
   }
 
   try {
@@ -55,7 +68,7 @@ export async function POST(request: NextRequest) {
     } else if (Array.isArray(subscriptionIds)) {
       targetIds = subscriptionIds;
     } else {
-      return createErrorResponse(
+      return createCorsErrorResponse(
         'Must provide subscriptionId or subscriptionIds array',
         400
       );
@@ -69,15 +82,22 @@ export async function POST(request: NextRequest) {
       deletedCount++;
     }
 
-    return createSuccessResponse({
+    return createCorsSuccessResponse({
       message: `Successfully deleted ${deletedCount} subscription(s)`,
       deletedCount,
     });
   } catch (error: any) {
     console.error('[v0] Bulk unsubscribe error:', error);
-    return createErrorResponse(
+    return createCorsErrorResponse(
       `Failed to delete subscriptions: ${error.message}`,
       500
     );
   }
+}
+
+/**
+ * Handle OPTIONS preflight requests
+ */
+export async function OPTIONS(request: NextRequest) {
+  return handleCorsPreFlight(request);
 }

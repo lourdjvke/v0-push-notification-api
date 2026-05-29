@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { database, ref, set, get } from '@/lib/firebase';
 import { createErrorResponse, createSuccessResponse } from '@/lib/api-auth';
+import { handleCorsPreFlight, createCorsErrorResponse, createCorsSuccessResponse } from '@/lib/cors';
 
 /**
  * POST /api/analytics
@@ -8,6 +9,12 @@ import { createErrorResponse, createSuccessResponse } from '@/lib/api-auth';
  * Can be called from the service worker or client
  */
 export async function POST(request: NextRequest) {
+  // Handle CORS preflight
+  const preflightResponse = handleCorsPreFlight(request);
+  if (preflightResponse) {
+    return preflightResponse;
+  }
+
   try {
     const body = await request.json();
     const {
@@ -19,12 +26,12 @@ export async function POST(request: NextRequest) {
     } = body;
 
     if (!type || !subscriptionId) {
-      return createErrorResponse('type and subscriptionId are required', 400);
+      return createCorsErrorResponse('type and subscriptionId are required', 400);
     }
 
     const validTypes = ['sent', 'delivered', 'opened', 'clicked', 'closed'];
     if (!validTypes.includes(type)) {
-      return createErrorResponse(`type must be one of: ${validTypes.join(', ')}`, 400);
+      return createCorsErrorResponse(`type must be one of: ${validTypes.join(', ')}`, 400);
     }
 
     // Store event
@@ -64,7 +71,7 @@ export async function POST(request: NextRequest) {
 
     await set(statsRef, currentStats);
 
-    return createSuccessResponse(
+    return createCorsSuccessResponse(
       {
         message: `Event tracked: ${type}`,
         eventId,
@@ -73,7 +80,7 @@ export async function POST(request: NextRequest) {
     );
   } catch (error: any) {
     console.error('[v0] Analytics error:', error);
-    return createErrorResponse(error.message, 500);
+    return createCorsErrorResponse(error.message, 500);
   }
 }
 
@@ -82,11 +89,17 @@ export async function POST(request: NextRequest) {
  * Get analytics for a specific subscription
  */
 export async function GET(request: NextRequest) {
+  // Handle CORS preflight
+  const preflightResponse = handleCorsPreFlight(request);
+  if (preflightResponse) {
+    return preflightResponse;
+  }
+
   try {
     const subscriptionId = request.nextUrl.searchParams.get('subscriptionId');
 
     if (!subscriptionId) {
-      return createErrorResponse('subscriptionId is required', 400);
+      return createCorsErrorResponse('subscriptionId is required', 400);
     }
 
     // Get subscription stats
@@ -117,7 +130,7 @@ export async function GET(request: NextRequest) {
       return timeB - timeA;
     });
 
-    return createSuccessResponse(
+    return createCorsSuccessResponse(
       {
         subscriptionId,
         stats,
@@ -130,6 +143,13 @@ export async function GET(request: NextRequest) {
     );
   } catch (error: any) {
     console.error('[v0] Get analytics error:', error);
-    return createErrorResponse(error.message, 500);
+    return createCorsErrorResponse(error.message, 500);
   }
+}
+
+/**
+ * Handle OPTIONS preflight requests
+ */
+export async function OPTIONS(request: NextRequest) {
+  return handleCorsPreFlight(request);
 }
