@@ -21,13 +21,22 @@ export async function GET(request: NextRequest) {
       return createCorsErrorResponse('Unauthorized: Invalid or missing API key', 401);
     }
 
+    // Get the API key from request
+    let apiKey = request.nextUrl.searchParams.get('apikey');
+    if (!apiKey && request.headers.get('Authorization')) {
+      const authHeader = request.headers.get('Authorization') || '';
+      apiKey = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : authHeader;
+    }
+
+    console.log('[v0] Analytics query - API Key:', apiKey ? apiKey.substring(0, 10) + '...' : 'unknown');
+
     // Get all subscriptions
     const subscriptionsRef = ref(database, 'subscriptions');
     const snapshot = await get(subscriptionsRef);
 
     if (!snapshot.exists()) {
       return createCorsSuccessResponse({
-        apiKey: validation.email || 'unknown',
+        apiKey: apiKey || 'unknown',
         subscriberCount: 0,
         subscribers: [],
         totalStats: {
@@ -48,8 +57,15 @@ export async function GET(request: NextRequest) {
 
     // Filter subscriptions for this API key
     for (const [subscriptionId, subData] of Object.entries(allSubscriptions)) {
-      // If user has email, only show their subscriptions
-      if (validation.email && subData.email !== validation.email) {
+      // Check if subscription matches this API key
+      // Subscriptions can be linked by:
+      // 1. Direct apiKey match in the subscription data
+      // 2. Email match (for backwards compatibility)
+      const isOwnSubscription = 
+        (apiKey && subData.apiKey === apiKey) ||
+        (validation.email && subData.email === validation.email);
+
+      if (!isOwnSubscription) {
         continue;
       }
 
@@ -74,8 +90,10 @@ export async function GET(request: NextRequest) {
       totalStats.notificationsClicked += subscriber.stats.notificationsClicked;
     }
 
+    console.log('[v0] Analytics found', subscribers.length, 'subscribers');
+
     return createCorsSuccessResponse({
-      apiKey: validation.email || 'unknown',
+      apiKey: apiKey || 'unknown',
       subscriberCount: subscribers.length,
       subscribers: subscribers.sort((a, b) => 
         new Date(b.subscribedAt).getTime() - new Date(a.subscribedAt).getTime()
