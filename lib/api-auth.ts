@@ -31,20 +31,28 @@ export function validateApiKeySync(request: NextRequest): { valid: boolean; erro
   return { valid: true };
 }
 
-export async function validateApiKeyAsync(request: NextRequest): Promise<{ valid: boolean; email?: string; error?: string }> {
-  const authHeader = request.headers.get('Authorization');
+export async function validateApiKeyAsync(request: NextRequest, directApiKey?: string): Promise<{ valid: boolean; email?: string; error?: string }> {
+  let token = directApiKey;
 
-  if (!authHeader) {
-    return {
-      valid: false,
-      error: 'Missing Authorization header',
-    };
+  // If no direct API key provided, extract from request
+  if (!token) {
+    let authHeader = request.headers.get('Authorization');
+    if (authHeader) {
+      token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : authHeader;
+    }
+
+    // Fall back to query parameter
+    if (!token) {
+      token = request.nextUrl.searchParams.get('apikey');
+    }
   }
 
-  // Support both "Bearer TOKEN" and plain token formats
-  const token = authHeader.startsWith('Bearer ') 
-    ? authHeader.slice(7)
-    : authHeader;
+  if (!token) {
+    return {
+      valid: false,
+      error: 'Missing API key',
+    };
+  }
 
   // Check environment API keys first (faster)
   if (VALID_API_KEYS.includes(token)) {

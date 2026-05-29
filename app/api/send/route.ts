@@ -1,23 +1,34 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { database, ref, get } from '@/lib/firebase';
-import { validateApiKey, createErrorResponse, createSuccessResponse, createUnauthorizedResponse } from '@/lib/api-auth';
+import { validateApiKeyAsync, createErrorResponse, createSuccessResponse } from '@/lib/api-auth';
 import { sendPushNotification, sendPushNotificationsToMany, PushNotification } from '@/lib/push-service';
+import { handleCorsPreFlight, createCorsErrorResponse, createCorsSuccessResponse } from '@/lib/cors';
 
 /**
  * POST /api/send
  * Send push notifications to subscribed devices
- * Requires: Authorization header with API key
+ * 
+ * Supports both:
+ * - Authorization header: Authorization: Bearer YOUR_API_KEY
+ * - Query parameter: ?apikey=YOUR_API_KEY
+ * 
  * Body: {
- *   subscriptionIds?: string[];
- *   subscriptionId?: string;
- *   notification: { title: string; body: string; icon?: string; badge?: string; data?: object }
+ *   "subscriptionIds"?: string[];
+ *   "subscriptionId"?: string;
+ *   "notification": { title: string; body: string; icon?: string; badge?: string; image?: string; data?: object }
  * }
  */
 export async function POST(request: NextRequest) {
-  // Validate API key
-  const auth = validateApiKey(request);
+  // Handle CORS preflight
+  const preflightResponse = handleCorsPreFlight(request);
+  if (preflightResponse) {
+    return preflightResponse;
+  }
+
+  // Validate API key (supports both header and query param)
+  const auth = await validateApiKeyAsync(request);
   if (!auth.valid) {
-    return createUnauthorizedResponse();
+    return createCorsErrorResponse('Unauthorized: Invalid or missing API key', 401);
   }
 
   try {
@@ -26,7 +37,7 @@ export async function POST(request: NextRequest) {
 
     // Validate notification
     if (!notification || !notification.title || !notification.body) {
-      return createErrorResponse(
+      return createCorsErrorResponse(
         'Invalid notification: must include title and body',
         400
       );
@@ -40,7 +51,7 @@ export async function POST(request: NextRequest) {
     } else if (Array.isArray(subscriptionIds) && subscriptionIds.length > 0) {
       targetIds = subscriptionIds;
     } else {
-      return createErrorResponse(
+      return createCorsErrorResponse(
         'Must provide either subscriptionId or subscriptionIds array',
         400
       );
@@ -51,7 +62,7 @@ export async function POST(request: NextRequest) {
     const snapshot = await get(subscriptionsRef);
 
     if (!snapshot.exists()) {
-      return createErrorResponse('No subscriptions found', 404);
+      return createCorsErrorResponse('No subscriptions found', 404);
     }
 
     const allSubscriptions = snapshot.val();
@@ -60,6 +71,13 @@ export async function POST(request: NextRequest) {
     for (const id of targetIds) {
       if (allSubscriptions[id]) {
         const subData = allSubscriptions[id];
+        
+        // If user is not admin, only allow sending to their own subscriptions
+        if (auth.email && subData.email && subData.email !== auth.email) {
+          console.log(`[v0] User ${auth.email} tried to send to subscription owned by ${subData.email}`);
+          continue;
+        }
+        
         // Reconstruct PushSubscriptionJSON
         targetSubscriptions.push({
           endpoint: subData.endpoint,
@@ -72,7 +90,7 @@ export async function POST(request: NextRequest) {
     }
 
     if (targetSubscriptions.length === 0) {
-      return createErrorResponse(
+      return createCorsErrorResponse(
         `No valid subscriptions found for provided IDs`,
         404
       );
@@ -117,15 +135,22 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    return createSuccessResponse({
+    return createCorsSuccessResponse({
       message: `Sent ${result.successful} notification(s)`,
       result,
     });
   } catch (error: any) {
     console.error('[v0] Send notification error:', error);
-    return createErrorResponse(
+    return createCorsErrorResponse(
       `Failed to send notification: ${error.message}`,
       500
     );
   }
+}
+
+/**
+ * Handle OPTIONS preflight requests
+ */
+export async function OPTIONS(request: NextRequest) {
+  return handleCorsPreFlight(request);
 }

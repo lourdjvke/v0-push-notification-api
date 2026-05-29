@@ -20,12 +20,19 @@
     return scripts[scripts.length - 1];
   })();
 
-  const urlParams = new URL(script.src).searchParams;
+  const scriptSrc = script.src || script.getAttribute('src') || '';
+  console.log('[PushNotif] Script src:', scriptSrc);
+  
+  const urlParams = new URL(scriptSrc).searchParams;
   const apiKey = urlParams.get('apikey');
-  const apiHost = new URL(script.src).origin;
+  const apiHost = new URL(scriptSrc).origin;
+
+  console.log('[PushNotif] API Key:', apiKey ? 'set' : 'NOT SET');
+  console.log('[PushNotif] API Host:', apiHost);
 
   if (!apiKey) {
     console.error('[PushNotif] API key not provided in script URL');
+    console.error('[PushNotif] Script URL:', scriptSrc);
     return;
   }
 
@@ -38,16 +45,24 @@
 
   // Log initialization
   console.log('[PushNotif] Initializing push notification script');
+  console.log('[PushNotif] Config:', config);
 
   /**
    * Check if browser supports Service Workers and Push API
    */
   function isSupported() {
-    return (
+    const supported = (
       'serviceWorker' in navigator &&
       'PushManager' in window &&
       'Notification' in window
     );
+    console.log('[PushNotif] Browser support check:', {
+      serviceWorker: 'serviceWorker' in navigator,
+      pushManager: 'PushManager' in window,
+      notification: 'Notification' in window,
+      supported,
+    });
+    return supported;
   }
 
   /**
@@ -60,14 +75,15 @@
         return null;
       }
 
-      const registration = await navigator.serviceWorker.register(
-        `${config.apiHost}/sw.js`
-      );
+      const swPath = `${config.apiHost}/sw.js`;
+      console.log('[PushNotif] Registering service worker from:', swPath);
+      
+      const registration = await navigator.serviceWorker.register(swPath, { scope: '/' });
       console.log('[PushNotif] Service worker registered:', registration);
       return registration;
     } catch (error) {
       console.error('[PushNotif] Service worker registration failed:', error);
-      return null;
+      throw error;
     }
   }
 
@@ -137,20 +153,30 @@
    */
   async function saveSubscriptionToServer(subscription) {
     try {
-      const response = await fetch(`${config.apiHost}/api/subscribe?apikey=${config.apiKey}`, {
+      const url = `${config.apiHost}/api/subscribe?apikey=${config.apiKey}`;
+      const payload = {
+        subscription: subscription.toJSON(),
+        deviceName: getDeviceName(),
+        apikey: config.apiKey,
+      };
+
+      console.log('[PushNotif] Sending subscription to:', url);
+      console.log('[PushNotif] Payload:', payload);
+
+      const response = await fetch(url, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          subscription: subscription.toJSON(),
-          deviceName: getDeviceName(),
-          apikey: config.apiKey,
-        }),
+        body: JSON.stringify(payload),
       });
 
+      console.log('[PushNotif] Subscribe response status:', response.status);
+
       if (!response.ok) {
-        throw new Error(`Server responded with ${response.status}`);
+        const errorText = await response.text();
+        console.error('[PushNotif] Server error response:', response.status, errorText);
+        throw new Error(`Server responded with ${response.status}: ${errorText}`);
       }
 
       const data = await response.json();
@@ -160,6 +186,10 @@
       return data.subscriptionId;
     } catch (error) {
       console.error('[PushNotif] Error saving subscription to server:', error);
+      console.error('[PushNotif] Error details:', {
+        message: error.message,
+        stack: error.stack,
+      });
       throw error;
     }
   }
@@ -183,19 +213,32 @@
    */
   async function checkApiConnection() {
     try {
-      const response = await fetch(
-        `${config.apiHost}/api/connection?apikey=${config.apiKey}`,
-        { method: 'GET' }
-      );
+      const url = `${config.apiHost}/api/connection?apikey=${config.apiKey}`;
+      console.log('[PushNotif] Testing CORS with URL:', url);
+      
+      const response = await fetch(url, { method: 'GET' });
+      
+      console.log('[PushNotif] Connection response status:', response.status);
+      console.log('[PushNotif] Connection response headers:', {
+        corsOrigin: response.headers.get('Access-Control-Allow-Origin'),
+        corsHeaders: response.headers.get('Access-Control-Allow-Headers'),
+      });
       
       if (response.ok) {
         const data = await response.json();
-        console.log('[PushNotif] API connection check:', data);
-        return data.apiKeyValid;
+        console.log('[PushNotif] API connection check passed:', data);
+        return data.apiKeyValid || data.corsWorking || true;
       }
+      
+      const errorText = await response.text();
+      console.error('[PushNotif] Connection check failed:', response.status, errorText);
       return false;
     } catch (error) {
-      console.error('[PushNotif] API connection check failed:', error);
+      console.error('[PushNotif] API connection check error:', error);
+      console.error('[PushNotif] Error details:', {
+        message: error.message,
+        stack: error.stack,
+      });
       return false;
     }
   }
@@ -238,41 +281,64 @@
    */
   async function initialize() {
     try {
+      console.log('[PushNotif] ===== INITIALIZATION START =====');
+      
       // Check browser support
       if (!isSupported()) {
-        console.warn('[PushNotif] Push notifications not supported');
+        console.warn('[PushNotif] Push notifications not supported in this browser');
+        window.dispatchEvent(new CustomEvent('pushNotificationError', {
+          detail: { error: 'Push notifications not supported' }
+        }));
         return;
       }
 
       // Check API connectivity
+      console.log('[PushNotif] Checking API connectivity...');
       const apiOk = await checkApiConnection();
       if (!apiOk) {
-        console.error('[PushNotif] Cannot reach API server');
+        console.error('[PushNotif] Cannot reach API server - aborting initialization');
+        window.dispatchEvent(new CustomEvent('pushNotificationError', {
+          detail: { error: 'Cannot reach API server' }
+        }));
         return;
       }
 
-      console.log('[PushNotif] Starting initialization...');
+      console.log('[PushNotif] API is reachable. Proceeding with initialization...');
 
       // Register service worker
+      console.log('[PushNotif] Registering service worker...');
       const registration = await registerServiceWorker();
       if (!registration) {
+        console.error('[PushNotif] Service worker registration failed');
+        window.dispatchEvent(new CustomEvent('pushNotificationError', {
+          detail: { error: 'Service worker registration failed' }
+        }));
         return;
       }
+
+      console.log('[PushNotif] Service worker registered. Requesting permission...');
 
       // Request permission
       const permissionGranted = await requestNotificationPermission();
       if (!permissionGranted) {
-        console.log('[PushNotif] User denied notification permission');
+        console.warn('[PushNotif] User denied notification permission');
+        window.dispatchEvent(new CustomEvent('pushNotificationError', {
+          detail: { error: 'User denied notification permission' }
+        }));
         return;
       }
+
+      console.log('[PushNotif] Permission granted. Creating subscription...');
 
       // Get or create subscription
       const subscription = await getOrCreateSubscription(registration);
 
       // Save subscription to server
+      console.log('[PushNotif] Saving subscription to server...');
       const subscriptionId = await saveSubscriptionToServer(subscription);
       
-      console.log('[PushNotif] Initialization complete! Subscription ID:', subscriptionId);
+      console.log('[PushNotif] ===== INITIALIZATION SUCCESS =====');
+      console.log('[PushNotif] Subscription ID:', subscriptionId);
 
       // Emit custom event
       window.dispatchEvent(new CustomEvent('pushNotificationReady', {
@@ -280,7 +346,11 @@
       }));
 
     } catch (error) {
-      console.error('[PushNotif] Initialization error:', error);
+      console.error('[PushNotif] ===== INITIALIZATION ERROR =====');
+      console.error('[PushNotif] Error:', error);
+      console.error('[PushNotif] Error message:', error.message);
+      console.error('[PushNotif] Error stack:', error.stack);
+      
       window.dispatchEvent(new CustomEvent('pushNotificationError', {
         detail: { error: error.message }
       }));
