@@ -12,7 +12,7 @@ export default function SendOneDonePage() {
   const [apiKeys, setApiKeys] = useState<any[]>([]);
   const [selectedKey, setSelectedKey] = useState('');
   const [loadingKeys, setLoadingKeys] = useState(false);
-  const [expandedSteps, setExpandedSteps] = useState<Set<number>>(new Set([0]));
+  const [expandedSteps, setExpandedSteps] = useState<Set<number>>(new Set([0, 2]));
 
   async function handleLoadKeys() {
     if (!email.trim()) {
@@ -114,6 +114,38 @@ export default function SendOneDonePage() {
 .then(data => console.log('Success:', data))
 .catch(err => console.error('Error:', err))`;
 
+  const fullStackNotificationCode = `fetch('${baseUrl}/api/send?apikey=${selectedKey}', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    subscriptionIds: ['sub_xxx'],
+    notification: {
+      title: 'Limited Time Offer',
+      body: 'Get 30% off your next purchase!',
+      image: 'https://example.com/banner.jpg',
+      badge: 'https://example.com/badge.png',
+      icon: 'https://example.com/icon.png',
+      actions: [
+        {
+          action: 'shop',
+          title: 'Shop Now'
+        },
+        {
+          action: 'later',
+          title: 'Remind Me Later'
+        }
+      ],
+      data: {
+        url: 'https://example.com/offer',
+        offerCode: 'SAVE30'
+      }
+    }
+  })
+})
+.then(res => res.json())
+.then(data => console.log('Success:', data))
+.catch(err => console.error('Error:', err))`;
+
   const successResponse = `{
   "message": "Sent 1 notification(s)",
   "result": {
@@ -124,12 +156,12 @@ export default function SendOneDonePage() {
 }`;
 
   return (
-    <div className="min-h-screen bg-background p-8">
+    <div className="min-h-screen bg-background p-4 md:p-8">
       <div className="max-w-4xl mx-auto space-y-8">
         {/* Header */}
         <div>
-          <h1 className="text-4xl font-bold mb-2">Send Notifications - One Done Setup</h1>
-          <p className="text-muted-foreground">
+          <h1 className="text-2xl md:text-4xl font-bold mb-2">Send Notifications - One Done Setup</h1>
+          <p className="text-sm md:text-base text-muted-foreground">
             Complete 3-step guide to send push notifications from your application
           </p>
         </div>
@@ -143,7 +175,7 @@ export default function SendOneDonePage() {
           <CardContent className="space-y-4">
             <div>
               <label className="text-sm font-medium">Your Email</label>
-              <div className="flex gap-2 mt-1">
+              <div className="flex flex-col sm:flex-row gap-2 mt-1">
                 <Input
                   type="email"
                   placeholder="your@email.com"
@@ -154,8 +186,9 @@ export default function SendOneDonePage() {
                       handleLoadKeys();
                     }
                   }}
+                  className="flex-1"
                 />
-                <Button onClick={handleLoadKeys} disabled={loadingKeys}>
+                <Button onClick={handleLoadKeys} disabled={loadingKeys} className="w-full sm:w-auto">
                   {loadingKeys ? 'Loading...' : 'Load Keys'}
                 </Button>
               </div>
@@ -167,7 +200,7 @@ export default function SendOneDonePage() {
                 <select
                   value={selectedKey}
                   onChange={(e) => setSelectedKey(e.target.value)}
-                  className="w-full mt-1 px-3 py-2 border rounded-lg"
+                  className="w-full mt-1 px-3 py-2 border rounded-lg text-sm"
                 >
                   {apiKeys.map((key) => (
                     <option key={key.id} value={key.key}>
@@ -181,7 +214,7 @@ export default function SendOneDonePage() {
             {selectedKey && (
               <div className="p-4 bg-muted rounded-lg">
                 <div className="text-sm text-muted-foreground mb-2">Your API Key:</div>
-                <div className="flex gap-2 items-start">
+                <div className="flex flex-col sm:flex-row gap-2 items-start">
                   <code className="flex-1 text-xs bg-background p-2 rounded break-all">
                     {selectedKey}
                   </code>
@@ -189,6 +222,7 @@ export default function SendOneDonePage() {
                     size="sm"
                     variant="ghost"
                     onClick={() => copyToClipboard(selectedKey)}
+                    className="w-full sm:w-auto"
                   >
                     <Copy className="w-4 h-4" />
                   </Button>
@@ -326,6 +360,58 @@ export default function SendOneDonePage() {
                   </div>
                   <pre className="text-xs overflow-x-auto">{imageNotificationCode}</pre>
                 </div>
+              </div>
+            </CardContent>
+          )}
+        </Card>
+
+        {/* Type 4: Full Stack - Image + Buttons */}
+        <Card>
+          <CardHeader
+            className="cursor-pointer hover:bg-muted/50"
+            onClick={() => toggleStep(4)}
+          >
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle>Type 4: Full Stack (Image + Buttons + Data)</CardTitle>
+                <CardDescription>
+                  Everything combined - most engaging notifications
+                </CardDescription>
+              </div>
+              {expandedSteps.has(4) ? (
+                <ChevronUp className="w-5 h-5" />
+              ) : (
+                <ChevronDown className="w-5 h-5" />
+              )}
+            </div>
+          </CardHeader>
+          {expandedSteps.has(4) && (
+            <CardContent className="space-y-4">
+              <p className="text-sm text-muted-foreground">
+                Combine images, buttons, and custom data for maximum engagement
+              </p>
+              <div className="bg-muted p-4 rounded-lg mb-3">
+                <div className="flex justify-between items-center mb-2">
+                  <span className="text-xs font-mono text-muted-foreground">JavaScript</span>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => copyToClipboard(fullStackNotificationCode)}
+                  >
+                    <Copy className="w-4 h-4 mr-1" />
+                    Copy
+                  </Button>
+                </div>
+                <pre className="text-xs overflow-x-auto">{fullStackNotificationCode}</pre>
+              </div>
+              <div className="text-sm text-muted-foreground bg-blue-50 p-3 rounded border border-blue-200">
+                <p className="font-medium text-blue-900 mb-2">What users see:</p>
+                <ul className="list-disc list-inside space-y-1 text-blue-900">
+                  <li>Large image banner</li>
+                  <li>Title and body text</li>
+                  <li>Two action buttons (Shop Now, Remind Me Later)</li>
+                  <li>Badge icon</li>
+                </ul>
               </div>
             </CardContent>
           )}
