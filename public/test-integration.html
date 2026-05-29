@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Push Notification Test</title>
+    <style>
+        body { font-family: sans-serif; max-width: 800px; margin: 40px auto; }
+        .log { background: #f5f5f5; padding: 15px; margin: 10px 0; border-radius: 4px; max-height: 400px; overflow-y: auto; }
+        .log-entry { margin: 5px 0; font-family: monospace; font-size: 12px; }
+        button { padding: 10px 20px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; }
+        button:hover { background: #0056b3; }
+        .status { padding: 10px; margin: 10px 0; border-radius: 4px; }
+        .success { background: #d4edda; color: #155724; }
+        .error { background: #f8d7da; color: #721c24; }
+        .info { background: #d1ecf1; color: #0c5460; }
+    </style>
+</head>
+<body>
+    <h1>Push Notification Integration Test</h1>
+    
+    <div class="status info">
+        <strong>API Key:</strong> sk_5a67406802e0cbd001637356c95ef05e915ded231de2b59805db2e39070174a4
+    </div>
+
+    <div id="status" class="status info">
+        Loading script...
+    </div>
+
+    <div class="log" id="log">
+        <div class="log-entry">Console logs will appear here...</div>
+    </div>
+
+    <button onclick="testConnection()">Test Connection</button>
+    <button onclick="testSend()">Test Send Notification</button>
+    <button onclick="clearLog()">Clear Log</button>
+
+    <script>
+        const logElement = document.getElementById('log');
+        const statusElement = document.getElementById('status');
+        const API_KEY = 'sk_5a67406802e0cbd001637356c95ef05e915ded231de2b59805db2e39070174a4';
+
+        // Override console.log to display in page
+        const originalLog = console.log;
+        console.log = function(...args) {
+            originalLog.apply(console, args);
+            const entry = document.createElement('div');
+            entry.className = 'log-entry';
+            entry.textContent = args.map(arg => 
+                typeof arg === 'object' ? JSON.stringify(arg, null, 2) : String(arg)
+            ).join(' ');
+            logElement.appendChild(entry);
+            logElement.scrollTop = logElement.scrollHeight;
+        };
+
+        console.log('[TEST] Test page loaded');
+        console.log('[TEST] API Key:', API_KEY);
+
+        async function testConnection() {
+            console.log('[TEST] Testing connection endpoint...');
+            try {
+                const response = await fetch(`http://localhost:3000/api/connection?apikey=${API_KEY}`);
+                const data = await response.json();
+                console.log('[TEST] Connection response:', data);
+                statusElement.className = 'status success';
+                statusElement.innerHTML = '<strong>✓ Connection Test Passed</strong>';
+            } catch (error) {
+                console.error('[TEST] Connection error:', error);
+                statusElement.className = 'status error';
+                statusElement.innerHTML = `<strong>✗ Connection Failed:</strong> ${error.message}`;
+            }
+        }
+
+        async function testSend() {
+            console.log('[TEST] Testing send endpoint...');
+            try {
+                const response = await fetch(`http://localhost:3000/api/send?apikey=${API_KEY}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        subscriptionIds: [],
+                        notification: { title: 'Test', body: 'Test notification' }
+                    })
+                });
+                const data = await response.json();
+                console.log('[TEST] Send response:', data);
+            } catch (error) {
+                console.error('[TEST] Send error:', error);
+            }
+        }
+
+        function clearLog() {
+            logElement.innerHTML = '';
+        }
+
+        // Listen for push notification events
+        window.addEventListener('pushNotificationReady', (event) => {
+            console.log('[TEST] Push notification ready:', event.detail);
+            statusElement.className = 'status success';
+            statusElement.innerHTML = `<strong>✓ Subscription Created:</strong> ${event.detail.subscriptionId}`;
+        });
+
+        window.addEventListener('pushNotificationError', (event) => {
+            console.error('[TEST] Push notification error:', event.detail);
+            statusElement.className = 'status error';
+            statusElement.innerHTML = `<strong>✗ Error:</strong> ${event.detail.error}`;
+        });
+
+        // Load the init script
+        console.log('[TEST] Loading init.js script...');
+        const script = document.createElement('script');
+        script.src = `http://localhost:3000/api/init.js?apikey=${API_KEY}`;
+        script.onerror = () => {
+            console.error('[TEST] Failed to load init.js');
+            statusElement.className = 'status error';
+            statusElement.innerHTML = '<strong>✗ Failed to load init.js script</strong>';
+        };
+        document.body.appendChild(script);
+    </script>
+</body>
+</html>
