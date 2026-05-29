@@ -28,8 +28,6 @@ export async function GET(request: NextRequest) {
       apiKey = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : authHeader;
     }
 
-    console.log('[v0] Analytics query - API Key:', apiKey ? apiKey.substring(0, 10) + '...' : 'unknown');
-
     // Get all subscriptions
     const subscriptionsRef = ref(database, 'subscriptions');
     const snapshot = await get(subscriptionsRef);
