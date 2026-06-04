@@ -65,7 +65,7 @@ export async function startRecording(
     const recordingId = generateRecordingId();
     const now = new Date().toISOString();
 
-    const recordingMetadata: RecordingMetadata = {
+    const recordingMetadata: any = {
       recordingId,
       callId,
       format: options?.format || 'webm',
@@ -74,8 +74,12 @@ export async function startRecording(
       includeVideo: options?.includeVideo ?? true,
       layout: options?.layout || 'grid',
       startedAt: now,
-      metadata: options?.metadata,
     };
+
+    // Only add optional metadata if defined
+    if (options?.metadata) {
+      recordingMetadata.metadata = options.metadata;
+    }
 
     // Store recording metadata in Firebase
     const recordingRef = ref(database, `calls/${callId}/recordings/${recordingId}`);
@@ -132,13 +136,20 @@ export async function stopRecording(
     const duration = Math.floor((now.getTime() - startedAt.getTime()) / 1000);
 
     // Update recording status
-    await update(recordingRef, {
+    const updateData: any = {
       status: 'stopped',
       endedAt: now.toISOString(),
       duration,
-      fileSize: options?.fileSize,
-      metadata: options?.metadata,
-    });
+    };
+
+    if (options?.fileSize !== undefined) {
+      updateData.fileSize = options.fileSize;
+    }
+    if (options?.metadata) {
+      updateData.metadata = options.metadata;
+    }
+
+    await update(recordingRef, updateData);
 
     // Also update the index
     const recordingIndexRef = ref(database, `recordings/${recordingId}`);

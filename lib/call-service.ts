@@ -77,16 +77,22 @@ export async function createCall(
   const now = new Date().toISOString();
 
   // Create call metadata
-  const callMetadata: CallMetadata = {
+  const callMetadata: any = {
     callId,
     roomId,
     type,
     status: 'active',
     maxParticipants,
     createdAt: now,
-    metadata: options?.metadata,
-    creatorEmail: options?.creatorEmail,
   };
+
+  // Only add optional fields if they are defined
+  if (options?.metadata) {
+    callMetadata.metadata = options.metadata;
+  }
+  if (options?.creatorEmail) {
+    callMetadata.creatorEmail = options.creatorEmail;
+  }
 
   // Store call metadata in Firebase
   const callRef = ref(database, `calls/${callId}`);
@@ -247,17 +253,25 @@ export async function addParticipant(
     const participantId = generateParticipantId();
     const now = new Date().toISOString();
 
-    const participantData: Participant = {
+    const participantData: any = {
       participantId,
-      userId,
-      userName,
       status: 'joined',
       audioEnabled: true,
       videoEnabled: callData.type === 'video',
       screenShareEnabled: false,
       joinedAt: now,
-      metadata,
     };
+
+    // Only add optional fields if defined
+    if (userId) {
+      participantData.userId = userId;
+    }
+    if (userName) {
+      participantData.userName = userName;
+    }
+    if (metadata) {
+      participantData.metadata = metadata;
+    }
 
     const newParticipantRef = ref(database, `calls/${callId}/participants/${participantId}`);
     await set(newParticipantRef, participantData);
