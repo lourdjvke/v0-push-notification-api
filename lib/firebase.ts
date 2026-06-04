@@ -1,5 +1,5 @@
 import { initializeApp } from 'firebase/app';
-import { getDatabase, ref, set, get, remove, query, orderByChild, limitToLast } from 'firebase/database';
+import { getDatabase, ref, set, get, remove, update, query, orderByChild, limitToLast } from 'firebase/database';
 
 const firebaseConfig = {
   apiKey: "AIzaSyDkIGFjmEpUIyENed5Zx7GG3krQFV2U5aE",
@@ -16,4 +16,4 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const database = getDatabase(app);
 
-export { app, database, ref, set, get, remove, query, orderByChild, limitToLast };
+export { app, database, ref, set, get, remove, update, query, orderByChild, limitToLast };
