@@ -48,7 +48,7 @@ export async function GET(request: NextRequest) {
       },
       body: JSON.stringify({
         amount: amountInKobo,
-        email: 'generic@payment.local', // Generic, not user-specific
+        email: 'payments@v0-push-notification.com', // Generic, not user-specific
         reference: reference,
         metadata: metadata ? JSON.parse(metadata) : { transactionId },
       }),
