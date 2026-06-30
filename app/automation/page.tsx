@@ -54,7 +54,7 @@ export default function AutomationPage() {
   const checkAccess = async () => {
     const userEmail = localStorage.getItem('userEmail');
     if (!userEmail) {
-      router.push('/dashboard');
+      toast({ description: 'Please enter your email first', variant: 'destructive' });
       return;
     }
 
@@ -62,13 +62,19 @@ export default function AutomationPage() {
 
     // Check if user has access (free user or has active payment)
     try {
-      // For now, allow if email is present
-      // In production, this would check payment status
-      setHasAccess(true);
-      loadAutomations(userEmail);
+      // Check if user has access to automation
+      const accessResponse = await fetch(`/api/pay/check-access?email=${encodeURIComponent(userEmail)}`);
+      const accessData = await accessResponse.json();
+
+      if (accessData.hasAccess) {
+        setHasAccess(true);
+        loadAutomations(userEmail);
+      } else {
+        toast({ description: 'Payment required to access automation', variant: 'destructive' });
+      }
     } catch (error) {
       console.error('Access check failed:', error);
-      router.push('/dashboard');
+      toast({ description: 'Failed to check access', variant: 'destructive' });
     }
   };
 
@@ -86,7 +92,7 @@ export default function AutomationPage() {
 
   const handleCreateAutomation = async () => {
     if (!formName || !formPath || !formSubscriptionId || !formMessage) {
-      toast.error('Please fill in all required fields');
+      toast({ description: 'Please fill in all required fields', variant: 'destructive' });
       return;
     }
 
@@ -97,33 +103,37 @@ export default function AutomationPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           email,
-          automation: {
-            name: formName,
-            firebasePath: formPath,
-            fieldMapping: {
-              subscriptionId: formSubscriptionId,
-              message: formMessage,
-              type: formType || undefined,
-              image: formImage || undefined,
-              statusField: formStatus || 'status',
-            },
+          name: formName,
+          firebasePath: formPath,
+          fieldMapping: {
+            subscriptionId: formSubscriptionId,
+            message: formMessage,
+            type: formType || undefined,
+            image: formImage || undefined,
+            statusField: formStatus || undefined,
           },
         }),
       });
 
-      const data = await response.json();
-
-      if (data.success) {
-        toast.success('Automation created!');
-        resetForm();
+      if (response.ok) {
+        toast({ description: 'Automation created!' });
         setShowForm(false);
-        await loadAutomations(email);
+        loadAutomations(email);
+        // Reset form
+        setFormName('');
+        setFormPath('');
+        setFormSubscriptionId('');
+        setFormMessage('');
+        setFormType('');
+        setFormImage('');
+        setFormStatus('');
       } else {
-        toast.error(data.error || 'Failed to create automation');
+        const data = await response.json();
+        toast({ description: data.error || 'Failed to create automation', variant: 'destructive' });
       }
     } catch (error) {
-      console.error('Error creating automation:', error);
-      toast.error('Failed to create automation');
+      console.error('Create automation error:', error);
+      toast({ description: 'Failed to create automation', variant: 'destructive' });
     } finally {
       setLoading(false);
     }
@@ -155,8 +165,10 @@ export default function AutomationPage() {
       });
 
       if (response.ok) {
-        await loadAutomations(email);
-        toast.success('Automation deleted');
+        toast({ description: 'Automation deleted' });
+        loadAutomations(email);
+      } else {
+        toast({ description: 'Failed to delete automation', variant: 'destructive' });
       }
     } catch (error) {
       toast.error('Failed to delete automation');
