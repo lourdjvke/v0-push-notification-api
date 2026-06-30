@@ -110,9 +110,11 @@ export default function PaymentAPIDocsPage() {
               </div>
 
               <div>
-                <p className="text-sm font-medium mb-2">Query Parameters</p>
+                <p className="text-sm font-medium mb-2">Query Parameters (GET)</p>
                 <div className="bg-muted p-3 rounded text-xs space-y-1">
                   <div><span className="font-semibold">amount</span> (required): Amount in Kobo (e.g., 500000 = ₦5,000)</div>
+                  <div><span className="font-semibold">email</span> (optional): Custom email for payment (default: payments@v0-push-notification.com)</div>
+                  <div><span className="font-semibold">brandName</span> (optional): Brand name to display in Paystack checkout (default: v0 Push Notification)</div>
                   <div><span className="font-semibold">metadata</span> (optional): JSON stringified custom data</div>
                 </div>
               </div>
@@ -151,25 +153,151 @@ export default function PaymentAPIDocsPage() {
           )}
         </Card>
 
-        {/* Endpoint 2: Check Payment Status */}
+        {/* Endpoint 2: POST Payment (JavaScript) */}
         <Card>
           <CardHeader
             className="cursor-pointer hover:bg-muted/50"
-            onClick={() => toggleSection('endpoint2')}
+            onClick={() => toggleSection('endpoint2post')}
           >
             <div className="flex items-center justify-between">
               <div>
-                <CardTitle>Endpoint 2: Check Payment Status</CardTitle>
-                <CardDescription>GET /api/pay/verify?id=TX_ID</CardDescription>
+                <CardTitle>Endpoint 2: Initiate Payment (POST)</CardTitle>
+                <CardDescription>POST /api/pay - JavaScript Payload</CardDescription>
               </div>
-              {expandedSections.has('endpoint2') ? (
+              {expandedSections.has('endpoint2post') ? (
                 <ChevronUp className="w-5 h-5" />
               ) : (
                 <ChevronDown className="w-5 h-5" />
               )}
             </div>
           </CardHeader>
-          {expandedSections.has('endpoint2') && (
+          {expandedSections.has('endpoint2post') && (
+            <CardContent className="space-y-4">
+              <div>
+                <p className="text-sm font-medium mb-2">Description</p>
+                <p className="text-sm text-muted-foreground">
+                  Initiate payment via POST request with custom email and brand name. Supports all payment methods: card, bank transfer, USSD, and mobile money.
+                </p>
+              </div>
+
+              <div>
+                <p className="text-sm font-medium mb-2">Request Body (JSON)</p>
+                <div className="bg-muted p-3 rounded text-xs font-mono">
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => copyToClipboard(`{
+  "amount": 500000,
+  "email": "customer@example.com",
+  "brandName": "My Store",
+  "metadata": {
+    "userId": "user123",
+    "orderId": "order456"
+  }
+}`)}
+                    className="mb-2"
+                  >
+                    <Copy className="w-4 h-4 mr-1" />
+                    Copy
+                  </Button>
+                  <pre>{`{
+  "amount": 500000,
+  "email": "customer@example.com",
+  "brandName": "My Store",
+  "metadata": {
+    "userId": "user123",
+    "orderId": "order456"
+  }
+}`}</pre>
+                </div>
+              </div>
+
+              <div>
+                <p className="text-sm font-medium mb-2">Request Parameters</p>
+                <div className="bg-muted p-3 rounded text-xs space-y-1">
+                  <div><span className="font-semibold">amount</span> (required): Amount in Kobo</div>
+                  <div><span className="font-semibold">email</span> (optional): Custom email for payment</div>
+                  <div><span className="font-semibold">brandName</span> (optional): Brand name in checkout (e.g., "My Company")</div>
+                  <div><span className="font-semibold">metadata</span> (optional): Custom data object</div>
+                </div>
+              </div>
+
+              <div>
+                <p className="text-sm font-medium mb-2">JavaScript Example</p>
+                <div className="bg-muted p-3 rounded text-xs font-mono">
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => copyToClipboard(`const response = await fetch('/api/pay', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    amount: 500000,
+    email: 'john@example.com',
+    brandName: 'MyApp Store',
+    metadata: { orderId: '12345' }
+  })
+});
+
+const data = await response.json();
+if (data.success) {
+  window.location.href = data.authorizationUrl;
+}`)}
+                    className="mb-2"
+                  >
+                    <Copy className="w-4 h-4 mr-1" />
+                    Copy
+                  </Button>
+                  <pre>{`const response = await fetch('/api/pay', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    amount: 500000,
+    email: 'john@example.com',
+    brandName: 'MyApp Store',
+    metadata: { orderId: '12345' }
+  })
+});
+
+const data = await response.json();
+if (data.success) {
+  window.location.href = data.authorizationUrl;
+}`}</pre>
+                </div>
+              </div>
+
+              <div className="bg-green-50 p-4 rounded border border-green-200">
+                <p className="text-sm font-medium text-green-900 mb-2">Payment Methods Supported</p>
+                <ul className="list-disc list-inside space-y-1 text-sm text-green-900">
+                  <li><span className="font-semibold">Card:</span> Visa, Mastercard, Verve</li>
+                  <li><span className="font-semibold">Bank Transfer:</span> Direct bank account transfer</li>
+                  <li><span className="font-semibold">USSD:</span> Unstructured Supplementary Service Data</li>
+                  <li><span className="font-semibold">Mobile Money:</span> Mobile money wallets</li>
+                </ul>
+              </div>
+            </CardContent>
+          )}
+        </Card>
+
+        {/* Endpoint 4: Check Payment Status */}
+        <Card>
+          <CardHeader
+            className="cursor-pointer hover:bg-muted/50"
+            onClick={() => toggleSection('endpoint4')}
+          >
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle>Endpoint 4: Check Payment Status</CardTitle>
+                <CardDescription>GET /api/pay/verify?id=TX_ID</CardDescription>
+              </div>
+              {expandedSections.has('endpoint4') ? (
+                <ChevronUp className="w-5 h-5" />
+              ) : (
+                <ChevronDown className="w-5 h-5" />
+              )}
+            </div>
+          </CardHeader>
+          {expandedSections.has('endpoint4') && (
             <CardContent className="space-y-4">
               <div>
                 <p className="text-sm font-medium mb-2">Description</p>

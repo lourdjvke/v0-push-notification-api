@@ -32,11 +32,13 @@ export default function AutomationPage() {
   const { toast } = useToast();
 
   const [email, setEmail] = useState('');
-  const [loading, setLoading] = useState(false);
+  const [emailInput, setEmailInput] = useState('');
+  const [loading, setLoading] = useState(true);
   const [hasAccess, setHasAccess] = useState(false);
   const [automations, setAutomations] = useState<Automation[]>([]);
   const [showForm, setShowForm] = useState(false);
   const [expandedAutomation, setExpandedAutomation] = useState<string | null>(null);
+  const [apiKeys, setApiKeys] = useState<any[]>([]);
 
   // Form state
   const [formName, setFormName] = useState('');
@@ -52,10 +54,11 @@ export default function AutomationPage() {
   }, []);
 
   const checkAccess = async () => {
+    setLoading(true);
     const userEmail = localStorage.getItem('userEmail');
     if (!userEmail) {
-      toast({ description: 'Please enter your email first', variant: 'destructive' });
-      return;
+      setLoading(false);
+      return; // Show email input form
     }
 
     setEmail(userEmail);
@@ -71,10 +74,44 @@ export default function AutomationPage() {
         loadAutomations(userEmail);
       } else {
         toast({ description: 'Payment required to access automation', variant: 'destructive' });
+        setLoading(false);
       }
     } catch (error) {
       console.error('Access check failed:', error);
       toast({ description: 'Failed to check access', variant: 'destructive' });
+      setLoading(false);
+    }
+  };
+
+  const handleEmailSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!emailInput) {
+      toast({ description: 'Please enter your email', variant: 'destructive' });
+      return;
+    }
+
+    localStorage.setItem('userEmail', emailInput);
+    setEmail(emailInput);
+    setLoading(true);
+
+    // Check access
+    try {
+      const accessResponse = await fetch(`/api/pay/check-access?email=${encodeURIComponent(emailInput)}`);
+      const accessData = await accessResponse.json();
+
+      if (accessData.hasAccess) {
+        setHasAccess(true);
+        loadAutomations(emailInput);
+        // Load API keys
+        await loadApiKeys(emailInput);
+      } else {
+        toast({ description: 'Payment required to access automation', variant: 'destructive' });
+        setLoading(false);
+      }
+    } catch (error) {
+      console.error('Access check failed:', error);
+      toast({ description: 'Failed to check access', variant: 'destructive' });
+      setLoading(false);
     }
   };
 
@@ -85,8 +122,22 @@ export default function AutomationPage() {
         const data = await response.json();
         setAutomations(data.automations || []);
       }
+      setLoading(false);
     } catch (error) {
       console.error('Failed to load automations:', error);
+      setLoading(false);
+    }
+  };
+
+  const loadApiKeys = async (userEmail: string) => {
+    try {
+      const response = await fetch(`/api/keys?email=${encodeURIComponent(userEmail)}`);
+      if (response.ok) {
+        const data = await response.json();
+        setApiKeys(data.keys || []);
+      }
+    } catch (error) {
+      console.error('Failed to load API keys:', error);
     }
   };
 
@@ -185,12 +236,69 @@ export default function AutomationPage() {
     setFormStatus('');
   };
 
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background p-4 md:p-8 flex items-center justify-center">
+        <Card className="w-full max-w-md">
+          <CardContent className="pt-6">
+            <div className="text-center space-y-4">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto" />
+              <p className="text-lg font-medium">Loading automation page...</p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  if (!email) {
+    return (
+      <div className="min-h-screen bg-background p-4 md:p-8 flex items-center justify-center">
+        <Card className="w-full max-w-md">
+          <CardHeader>
+            <CardTitle>Firebase Automation Setup</CardTitle>
+            <CardDescription>Enter your email to get started</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleEmailSubmit} className="space-y-4">
+              <div>
+                <label className="text-sm font-medium">Email Address</label>
+                <Input
+                  type="email"
+                  placeholder="your@email.com"
+                  value={emailInput}
+                  onChange={(e) => setEmailInput(e.target.value)}
+                  className="mt-1"
+                />
+              </div>
+              <Button type="submit" className="w-full">
+                Continue
+              </Button>
+            </form>
+            <p className="text-xs text-muted-foreground text-center mt-4">
+              If you don't have API keys yet, you can create one after entering your email
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   if (!hasAccess) {
     return (
       <div className="min-h-screen bg-background p-4 md:p-8 flex items-center justify-center">
-        <Card>
-          <CardContent className="pt-6">
-            <p>Loading automation page...</p>
+        <Card className="w-full max-w-md">
+          <CardHeader>
+            <CardTitle>Payment Required</CardTitle>
+            <CardDescription>To access Firebase automation</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              This feature requires an active payment. Please make a payment to access automation features.
+            </p>
+            <Button onClick={() => window.location.href = '/api/pay?amount=500000'} className="w-full">
+              Make Payment
+            </Button>
           </CardContent>
         </Card>
       </div>
