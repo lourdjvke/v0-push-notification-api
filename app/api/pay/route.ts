@@ -12,6 +12,9 @@ export async function GET(request: NextRequest) {
     const amount = request.nextUrl.searchParams.get('amount');
     const metadata = request.nextUrl.searchParams.get('metadata');
 
+    console.log('[v0] Pay endpoint called - amount:', amount);
+    console.log('[v0] PAYSTACK_SECRET_KEY set:', !!PAYSTACK_SECRET_KEY);
+
     // Validate amount
     if (!amount || isNaN(Number(amount)) || Number(amount) <= 0) {
       return NextResponse.json(
@@ -20,11 +23,21 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    if (!PAYSTACK_SECRET_KEY) {
+      console.error('[v0] PAYSTACK_SECRET_KEY is not configured');
+      return NextResponse.json(
+        { success: false, error: 'Payment gateway not configured' },
+        { status: 500 }
+      );
+    }
+
     const amountInKobo = Number(amount);
 
     // Generate unique transaction ID
     const transactionId = `TX_${Date.now()}_${crypto.randomBytes(4).toString('hex')}`;
     const reference = `PAY-${Date.now()}`;
+
+    console.log('[v0] Initializing Paystack - amount:', amountInKobo, 'reference:', reference);
 
     // Initialize Paystack payment
     const initializeResponse = await fetch('https://api.paystack.co/transaction/initialize', {
@@ -35,16 +48,19 @@ export async function GET(request: NextRequest) {
       },
       body: JSON.stringify({
         amount: amountInKobo,
-        email: 'generic@payment.local', // Generic, not user-specific
+        email: 'payments@v0-push-notification.com', // Generic, not user-specific
         reference: reference,
         metadata: metadata ? JSON.parse(metadata) : { transactionId },
       }),
     });
 
     const payStackData = await initializeResponse.json();
+    console.log('[v0] Paystack response status:', initializeResponse.status);
+    console.log('[v0] Paystack response:', JSON.stringify(payStackData).substring(0, 300));
 
     if (!payStackData.status) {
-      throw new Error('Failed to initialize Paystack payment');
+      console.error('[v0] Paystack failed:', payStackData);
+      throw new Error(payStackData.message || 'Failed to initialize Paystack payment');
     }
 
     // Store payment in Firebase
