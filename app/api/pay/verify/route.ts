@@ -1,16 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { database } from '@/lib/firebase';
 import { ref, get, update } from 'firebase/database';
+import { handleCorsPreFlight, createCorsSuccessResponse, createCorsErrorResponse } from '@/lib/cors';
+
+export async function OPTIONS(request: NextRequest) {
+  return handleCorsPreFlight(request);
+}
 
 export async function GET(request: NextRequest) {
   try {
     const transactionId = request.nextUrl.searchParams.get('id');
 
     if (!transactionId) {
-      return NextResponse.json(
-        { error: 'Transaction ID required' },
-        { status: 400 }
-      );
+      return createCorsErrorResponse('Transaction ID required', 400);
     }
 
     // Get payment from Firebase
@@ -18,17 +20,14 @@ export async function GET(request: NextRequest) {
     const snapshot = await get(paymentRef);
 
     if (!snapshot.exists()) {
-      return NextResponse.json(
-        { error: 'Transaction not found' },
-        { status: 404 }
-      );
+      return createCorsErrorResponse('Transaction not found', 404);
     }
 
     const payment = snapshot.val();
 
     // Check if transaction has expired
     if (new Date() > new Date(payment.expiresAt)) {
-      return NextResponse.json({
+      return createCorsSuccessResponse({
         transactionId,
         status: 'expired',
         amount: payment.amount,
@@ -39,7 +38,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Return current status
-    return NextResponse.json({
+    return createCorsSuccessResponse({
       transactionId,
       status: payment.status,
       amount: payment.amount,
@@ -52,9 +51,6 @@ export async function GET(request: NextRequest) {
     });
   } catch (error: any) {
     console.error('[v0] Verify endpoint error:', error);
-    return NextResponse.json(
-      { error: error.message || 'Verification failed' },
-      { status: 500 }
-    );
+    return createCorsErrorResponse(error.message || 'Verification failed', 500);
   }
 }
