@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { database } from '@/lib/firebase';
 import { ref, set } from 'firebase/database';
 import crypto from 'crypto';
+import { handleCorsPreFlight, createCorsSuccessResponse, createCorsErrorResponse } from '@/lib/cors';
 
 const PAYSTACK_SECRET_KEY = process.env.PAYSTACK_SECRET_KEY;
 const FALLBACK_URL = 'https://v0-push-notification-api-nu.vercel.app';
@@ -13,10 +14,10 @@ async function processPayment(
   metadata: any = {},
   brandName: string = 'v0 Push Notification'
 ) {
-  if (!PAYSTACK_SECRET_KEY) {
-    console.error('[v0] PAYSTACK_SECRET_KEY is not configured');
-    throw new Error('Payment gateway not configured');
-  }
+    if (!PAYSTACK_SECRET_KEY) {
+      console.error('[v0] PAYSTACK_SECRET_KEY is not configured');
+      return createCorsErrorResponse('Payment gateway not configured', 500);
+    }
 
   if (!amount || isNaN(amount) || amount <= 0) {
     throw new Error('Invalid amount');
@@ -81,20 +82,23 @@ async function processPayment(
 }
 
 // GET endpoint - for URL-based payment (backward compatible)
+export async function OPTIONS(request: NextRequest) {
+  return handleCorsPreFlight(request);
+}
+
 export async function GET(request: NextRequest) {
   try {
     const amount = request.nextUrl.searchParams.get('amount');
     const email = request.nextUrl.searchParams.get('email');
-    const metadata = request.nextUrl.searchParams.get('metadata');
     const brandName = request.nextUrl.searchParams.get('brandName');
+    const metadata = request.nextUrl.searchParams.get('metadata');
 
-    console.log('[v0] Pay GET endpoint called - amount:', amount, 'email:', email);
+    console.log('[v0] Pay endpoint called - amount:', amount);
+    console.log('[v0] PAYSTACK_SECRET_KEY set:', !!PAYSTACK_SECRET_KEY);
 
+    // Validate amount
     if (!amount || isNaN(Number(amount)) || Number(amount) <= 0) {
-      return NextResponse.json(
-        { success: false, error: 'Invalid amount' },
-        { status: 400 }
-      );
+      return createCorsErrorResponse('Invalid amount', 400);
     }
 
     const paymentData = await processPayment(
@@ -104,20 +108,23 @@ export async function GET(request: NextRequest) {
       brandName || 'v0 Push Notification'
     );
 
-    return NextResponse.json({
-      success: true,
-      ...paymentData,
-    });
-  } catch (error: any) {
-    console.error('[v0] Pay GET endpoint error:', error);
-    return NextResponse.json(
-      { success: false, error: error.message || 'Payment initialization failed' },
-      { status: 500 }
-    );
+      return createCorsSuccessResponse({
+        success: true,
+        transactionId,
+        amount: amountInKobo,
+        currency: 'NGN',
+        reference: reference,
+        authorizationUrl: paystackData.data.authorization_url,
+        accessCode: paystackData.data.access_code,
+        expiresIn: 3600,
+        createdAt: new Date().toISOString(),
+      });
+    } catch (error: any) {
+      console.error('[v0] Pay endpoint error:', error);
+      return createCorsErrorResponse(error.message, 500);
+    }
   }
-}
 
-// POST endpoint - for JavaScript payload
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
@@ -126,10 +133,7 @@ export async function POST(request: NextRequest) {
     console.log('[v0] Pay POST endpoint called - amount:', amount, 'email:', email);
 
     if (!amount || isNaN(Number(amount)) || Number(amount) <= 0) {
-      return NextResponse.json(
-        { success: false, error: 'Invalid amount' },
-        { status: 400 }
-      );
+      return createCorsErrorResponse('Invalid amount', 400);
     }
 
     const paymentData = await processPayment(
@@ -139,15 +143,12 @@ export async function POST(request: NextRequest) {
       brandName || 'v0 Push Notification'
     );
 
-    return NextResponse.json({
+    return createCorsSuccessResponse({
       success: true,
       ...paymentData,
     });
   } catch (error: any) {
-    console.error('[v0] Pay POST endpoint error:', error);
-    return NextResponse.json(
-      { success: false, error: error.message || 'Payment initialization failed' },
-      { status: 500 }
-    );
+    console.error('[v0] POST pay endpoint error:', error);
+    return createCorsErrorResponse(error.message, 500);
   }
 }

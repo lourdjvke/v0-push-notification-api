@@ -1,23 +1,25 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { database } from '@/lib/firebase';
 import { ref, get } from 'firebase/database';
+import { handleCorsPreFlight, createCorsSuccessResponse, createCorsErrorResponse } from '@/lib/cors';
 
 const FREE_USER_EMAIL = 'jvkechris@gmail.com';
+
+export async function OPTIONS(request: NextRequest) {
+  return handleCorsPreFlight(request);
+}
 
 export async function GET(request: NextRequest) {
   try {
     const email = request.nextUrl.searchParams.get('email');
 
     if (!email) {
-      return NextResponse.json(
-        { hasAccess: false, error: 'Email required' },
-        { status: 400 }
-      );
+      return createCorsErrorResponse('Email required', 400);
     }
 
     // Check if free user
     if (email === FREE_USER_EMAIL) {
-      return NextResponse.json({
+      return createCorsSuccessResponse({
         hasAccess: true,
         reason: 'free_user',
         isFreeUser: true,
@@ -30,7 +32,7 @@ export async function GET(request: NextRequest) {
     const snapshot = await get(paymentsRef);
 
     if (!snapshot.exists()) {
-      return NextResponse.json({
+      return createCorsSuccessResponse({
         hasAccess: false,
         reason: 'no_payment',
         isFreeUser: false,
@@ -54,7 +56,7 @@ export async function GET(request: NextRequest) {
         new Date(p.expiresAt) > now
       ) {
         // Payment is still valid
-        return NextResponse.json({
+        return createCorsSuccessResponse({
           hasAccess: true,
           reason: 'active_payment',
           isFreeUser: false,
@@ -65,7 +67,7 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    return NextResponse.json({
+    return createCorsSuccessResponse({
       hasAccess: false,
       reason: 'no_active_payment',
       isFreeUser: false,
@@ -74,9 +76,6 @@ export async function GET(request: NextRequest) {
     });
   } catch (error: any) {
     console.error('[v0] Check access error:', error);
-    return NextResponse.json(
-      { hasAccess: false, error: error.message },
-      { status: 500 }
-    );
+    return createCorsErrorResponse(error.message, 500);
   }
 }

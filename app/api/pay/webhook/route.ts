@@ -2,8 +2,13 @@ import { NextRequest, NextResponse } from 'next/server';
 import { database } from '@/lib/firebase';
 import { ref, get, update } from 'firebase/database';
 import crypto from 'crypto';
+import { handleCorsPreFlight, createCorsSuccessResponse, createCorsErrorResponse } from '@/lib/cors';
 
 const PAYSTACK_SECRET_KEY = process.env.PAYSTACK_SECRET_KEY;
+
+export async function OPTIONS(request: NextRequest) {
+  return handleCorsPreFlight(request);
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -11,10 +16,7 @@ export async function POST(request: NextRequest) {
     const body = await request.text();
 
     if (!signature) {
-      return NextResponse.json(
-        { success: false, error: 'No signature provided' },
-        { status: 400 }
-      );
+      return createCorsErrorResponse('No signature provided', 400);
     }
 
     // Verify Paystack signature
@@ -24,17 +26,14 @@ export async function POST(request: NextRequest) {
       .digest('hex');
 
     if (hash !== signature) {
-      return NextResponse.json(
-        { success: false, error: 'Invalid signature' },
-        { status: 403 }
-      );
+      return createCorsErrorResponse('Invalid signature', 403);
     }
 
     const event = JSON.parse(body);
 
     // Only process successful charges
     if (event.event !== 'charge.success') {
-      return NextResponse.json({ success: true, message: 'Event ignored' });
+      return createCorsSuccessResponse({ success: true, message: 'Event ignored' });
     }
 
     const paystackReference = event.data.reference;
@@ -42,7 +41,7 @@ export async function POST(request: NextRequest) {
     const paid = event.data.paid;
 
     if (!paid) {
-      return NextResponse.json({ success: true, message: 'Payment not completed' });
+      return createCorsSuccessResponse({ success: true, message: 'Payment not completed' });
     }
 
     // Find transaction by Paystack reference
@@ -51,7 +50,7 @@ export async function POST(request: NextRequest) {
 
     if (!snapshot.exists()) {
       console.warn('[v0] No payments found in database');
-      return NextResponse.json({ success: true, message: 'No matching transaction' });
+      return createCorsSuccessResponse({ success: true, message: 'No matching transaction' });
     }
 
     let transactionId: string | null = null;
@@ -67,7 +66,7 @@ export async function POST(request: NextRequest) {
 
     if (!transactionId) {
       console.warn('[v0] No matching transaction found for reference:', paystackReference);
-      return NextResponse.json({ success: true, message: 'No matching transaction' });
+      return createCorsSuccessResponse({ success: true, message: 'No matching transaction' });
     }
 
     // Update payment status
@@ -80,16 +79,13 @@ export async function POST(request: NextRequest) {
 
     console.log('[v0] Payment verified successfully:', transactionId);
 
-    return NextResponse.json({
+    return createCorsSuccessResponse({
       success: true,
       message: 'Webhook processed',
       transactionId,
     });
   } catch (error: any) {
     console.error('[v0] Webhook error:', error);
-    return NextResponse.json(
-      { success: false, error: error.message || 'Webhook processing failed' },
-      { status: 500 }
-    );
+    return createCorsErrorResponse(error.message || 'Webhook processing failed', 500);
   }
 }
